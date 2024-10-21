@@ -67,15 +67,13 @@ private:
     /**
      * @brief 尝试删除最久最不常用的元素
      */
-    void _tryRemoveLFUItem() {
-        if (_keyMap.size() == _capacity) {
-            // 删除最久最不经常使用的
-            auto lfuListIt = _freqMap.find(_minCnt);
-            _keyMap.erase(lfuListIt->second.rbegin()->first);
-            lfuListIt->second.pop_back();
-            if (lfuListIt->second.empty()) {
-                _freqMap.erase(lfuListIt);
-            }
+    void _removeLFUItem() {
+        // 删除最久最不经常使用的
+        auto lfuListIt = _freqMap.find(_minCnt);
+        _keyMap.erase(lfuListIt->second.rbegin()->first);
+        lfuListIt->second.pop_back();
+        if (lfuListIt->second.empty()) {
+            _freqMap.erase(lfuListIt);
         }
     }
 public:
@@ -137,6 +135,23 @@ public:
 
 #if __cplusplus >= 201402L
     /**
+     * @brief 获取键`key`对应的值 (透明查找), 如果不存在则`抛出异常`
+     * @tparam X 需要支持`Compare::is_transparent`
+     * @param key 
+     * @return const V& 
+     * @throw std::range_error(键: 不存在)
+     * @warning 值得注意的是, 因为返回的是引用, 所以请尽早的使用, 防止悬挂引用! (缓存开大点); 不然请老老实实拷贝吧
+     */
+    template <class X>
+    const V& get(const X& key) const {
+        auto it = _keyMap.find(key);
+        if (it != _keyMap.end()) {
+            return _updateToFrequent(it);
+        }
+        throw std::range_error("There is no such key in cache");
+    }
+
+    /**
      * @brief 检查缓存中是否包含某个键 (透明比较)
      * @tparam X 需要支持`Compare::is_transparent`
      * @param key 需要检查的键
@@ -160,7 +175,9 @@ public:
             _updateToFrequent(it);
             it->second->second.first = value;
         } else {
-            _tryRemoveLFUItem();
+            if (_keyMap.size() == _capacity) {
+                _removeLFUItem();
+            }
             // 插入
             auto& newList = _freqMap[_minCnt = 1];
             _keyMap[key] = newList.emplace(
@@ -189,7 +206,9 @@ public:
             // 使用 std::addressof 可以防止 & 运算符被重载
             new (std::addressof(value)) V(std::forward<Args>(args)...); // 原地构造
         } else {
-            _tryRemoveLFUItem();
+            if (_keyMap.size() == _capacity) {
+                _removeLFUItem();
+            }
             // 插入
             auto& newList = _freqMap[_minCnt = 1];
             _keyMap[key] = newList.emplace(
@@ -307,6 +326,20 @@ public:
     }
 
 #if __cplusplus >= 201402L
+    /**
+     * @brief 获取键`key`对应的值 (透明查找), 如果不存在则`抛出异常`
+     * @tparam X 需要支持`Compare::is_transparent`
+     * @param key 
+     * @return V 
+     * @throw std::range_error(键: 不存在)
+     * @warning 值得注意的是, 因为返回的是引用, 所以请尽早的使用, 防止悬挂引用! (缓存开大点); 不然请老老实实拷贝吧
+     */
+    template <class X>
+    const V& get(const K& key) const {
+        std::shared_lock<decltype(_mtx)> _{_mtx};
+        return LFUCache<K, V>::get(key);
+    }
+
     /**
      * @brief 检查缓存中是否包含某个键 (透明比较)
      * @tparam X 需要支持`Compare::is_transparent`

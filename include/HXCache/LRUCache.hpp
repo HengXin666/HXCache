@@ -97,6 +97,24 @@ public:
 
 #if __cplusplus >= 201402L
     /**
+     * @brief 获取键`key`对应的值 (透明查找), 如果不存在则`抛出异常`
+     * @tparam X 需要支持`Compare::is_transparent`
+     * @param key 
+     * @return V 
+     * @throw std::range_error(键: 不存在)
+     * @warning 值得注意的是, 因为返回的是引用, 所以请尽早的使用, 防止悬挂引用! (缓存开大点); 不然请老老实实拷贝吧
+     */
+    template <class X>
+    const V& get(const X& key) const {
+        auto it = _cacheMap.find(key);
+        if (it != _cacheMap.end()) {
+            _cacheList.splice(_cacheList.begin(), _cacheList, it->second);
+            return _cacheList.begin()->second;
+        }
+        throw std::range_error("There is no such key in cache");
+    }
+
+    /**
      * @brief 检查缓存中是否包含某个键 (透明比较)
      * @tparam X 需要支持`Compare::is_transparent`
      * @param key 需要检查的键
@@ -271,6 +289,20 @@ public:
     }
 
 #if __cplusplus >= 201402L
+    /**
+     * @brief 获取键`key`对应的值 (透明查找), 如果不存在则`抛出异常`
+     * @tparam X 需要支持`Compare::is_transparent`
+     * @param key 
+     * @return V 
+     * @throw std::range_error(键: 不存在)
+     * @warning 值得注意的是, 因为返回的是引用, 所以请尽早的使用, 防止悬挂引用! (缓存开大点); 不然请老老实实拷贝吧
+     */
+    template <class X>
+    const V& get(const X& key) const {
+        std::shared_lock<decltype(_mtx)> _{_mtx};
+        return LRUCache<K, V>::get(key);
+    }
+
     /**
      * @brief 检查缓存中是否包含某个键 (透明比较)
      * @tparam X 需要支持`Compare::is_transparent`

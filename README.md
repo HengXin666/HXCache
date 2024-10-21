@@ -36,5 +36,12 @@ int main() {
 
     std::cout << "cache size = " << cache.size() << '\n'; // 0
     return 0;
+
+    // 注意, 如果是c++14及其以后
+    // 如果key是std::string, 
+    // 那么当我们使用 cache.get("KeyData"); 的时候,
+    // 使用的是`透明查找`! 不会原地调用`std::string`的构造函数把`const char *`
+    // 构造后, 再传参! 而是直接使用
+    // 例如: XxxCache::get<char [8]>(const char (&key)[8]) 这个方法
 }
 ```

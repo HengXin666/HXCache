@@ -37,7 +37,7 @@ else()
     message("已添加宏: _HX_DEBUG_")
 endif()
 
-set(CMAKE_CXX_STANDARD 11) # 设置C++标准为C++20
+set(CMAKE_CXX_STANDARD 17) # 设置C++标准为C++20
 set(CMAKE_C_STANDARD 11)   # 设置C语言标准为C11
 set(CMAKE_CXX_STANDARD_REQUIRED ON) # 指定C++标准是必需的
 set(CMAKE_CXX_EXTENSIONS OFF) # 禁用编译器的扩展
