@@ -190,6 +190,33 @@ public:
     }
 
     /**
+     * @brief 插入一个键值对, 如果有相同的则会覆盖旧的
+     * @param key 
+     * @param value 
+     */
+    void insert(const K& key, V&& value) {
+        auto it = _keyMap.find(key);
+        if (it != _keyMap.end()) {
+            _updateToFrequent(it);
+            auto& value = it->second->second.first;
+            value.~V();
+            new (std::addressof(value)) V(std::move(value));
+        } else {
+            if (_keyMap.size() == _capacity) {
+                _removeLFUItem();
+            }
+            // 插入
+            auto& newList = _freqMap[_minCnt = 1];
+            _keyMap[key] = newList.emplace(
+                newList.begin(),
+                std::piecewise_construct,
+                std::forward_as_tuple(key),
+                std::forward_as_tuple(std::move(value), 1)
+            );
+        }
+    }
+
+    /**
      * @brief 插入一个键值对(以原地构造的方式), 如果有相同的则会覆盖旧的
      * @tparam Args 
      * @param key 
@@ -366,6 +393,20 @@ public:
         std::unique_lock<decltype(_mtx)> _{_mtx};
 #endif // __cplusplus >= 201402L
         LFUCache<K, V>::insert(key, value);
+    }
+
+    /**
+     * @brief 插入一个键值对, 如果有相同的则会覆盖旧的
+     * @param key 
+     * @param value 
+     */
+    void insert(const K& key, V&& value) {
+#if __cplusplus >= 201402L
+        std::shared_lock<decltype(_mtx)> _{_mtx};
+#else
+        std::unique_lock<decltype(_mtx)> _{_mtx};
+#endif // __cplusplus >= 201402L
+        LFUCache<K, V>::insert(key, std::move(value));
     }
 
     /**

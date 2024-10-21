@@ -150,6 +150,31 @@ public:
     }
 
     /**
+     * @brief 插入一个键值对, 如果有相同的则会覆盖旧的
+     * @param key 
+     * @param value 
+     */
+    void insert(const K& key, V&& value) {
+        auto it = _cacheMap.find(key);
+        if (it != _cacheMap.end()) {
+            // 修改
+            _cacheList.splice(_cacheList.begin(), _cacheList, it->second);
+            // 原地构造
+            auto& value = _cacheList.begin()->second;
+            value.~V();
+            new (std::addressof(value)) V(std::move(value));
+        } else {
+            // 添加
+            if (_cacheMap.size() == _capacity) {
+                // 满了, 需要删除最久没有使用的
+                _cacheMap.erase(_cacheList.rbegin()->first);
+                _cacheList.pop_back();
+            }
+            _cacheMap.emplace(key, _cacheList.emplace(_cacheList.begin(), key, std::move(value)));
+        }
+    }
+
+    /**
      * @brief 插入一个键值对(以原地构造的方式), 如果有相同的则会覆盖旧的
      * @tparam Args 
      * @param key 
@@ -326,6 +351,17 @@ public:
         std::unique_lock<decltype(_mtx)> _{_mtx};
         LRUCache<K, V>::insert(key, value);
     }
+
+    /**
+     * @brief 插入一个键值对, 如果有相同的则会覆盖旧的
+     * @param key 
+     * @param value 
+     */
+    void insert(const K& key, V&& value) {
+        std::unique_lock<decltype(_mtx)> _{_mtx};
+        LRUCache<K, V>::insert(key, std::move(value));
+    }
+
 
     /**
      * @brief 插入一个键值对(以原地构造的方式), 如果有相同的则会覆盖旧的
